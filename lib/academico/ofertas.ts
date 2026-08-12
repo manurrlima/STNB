@@ -44,6 +44,19 @@ export async function criarOferta(
     return { ok: false, erro: "Apenas pedagógico ou financeiro podem criar ofertas." }
   }
 
+  const { data: ofertaFechada } = await supabaseAdmin
+    .from("ofertas")
+    .select("fechado")
+    .eq("ano", dados.ano)
+    .eq("trimestre", dados.trimestre)
+    .eq("fechado", true)
+    .limit(1)
+    .maybeSingle()
+
+  if (ofertaFechada && !ehFinanceiro(papel)) {
+    return { ok: false, erro: "Este planejamento já está fechado — apenas o financeiro pode adicionar novas ofertas." }
+  }
+
   const { data, error } = await supabaseAdmin
     .from("ofertas")
     .insert({

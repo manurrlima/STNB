@@ -12,7 +12,7 @@ Checklist de configuração manual necessária antes de rodar este app contra se
 
 2. **Supabase**
    - Crie um projeto no [Supabase](https://supabase.com).
-   - Aplique a migração `supabase/migrations/0001_init.sql` pelo SQL Editor do projeto (ou, se a CLI já estiver linkada ao projeto, rode `supabase db push`).
+   - Aplique as migrações `supabase/migrations/0001_init.sql` e `supabase/migrations/0002_academico.sql` pelo SQL Editor do projeto (ou, se a CLI já estiver linkada ao projeto, rode `supabase db push`).
 
 3. **Firebase**
    - Crie um projeto no [Firebase Console](https://console.firebase.google.com).

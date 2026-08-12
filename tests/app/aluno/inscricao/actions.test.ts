@@ -6,6 +6,7 @@ const avaliarGateInscricaoMock = vi.fn()
 const obterConfiguracaoAcademicaMock = vi.fn()
 const ofertasSelectMock = vi.fn()
 const progressoSelectMock = vi.fn()
+const inscricaoMaybeSingleMock = vi.fn()
 const inscricaoInsertSingleMock = vi.fn()
 const inscricaoOfertasInsertMock = vi.fn()
 const progressoUpsertMock = vi.fn()
@@ -24,7 +25,12 @@ vi.mock("@/lib/supabase/admin", () => ({
           upsert: progressoUpsertMock,
         }
       }
-      if (tabela === "inscricoes") return { insert: () => ({ select: () => ({ single: inscricaoInsertSingleMock }) }) }
+      if (tabela === "inscricoes") {
+        return {
+          select: () => ({ eq: () => ({ eq: () => ({ eq: () => ({ maybeSingle: inscricaoMaybeSingleMock }) }) }) }),
+          insert: () => ({ select: () => ({ single: inscricaoInsertSingleMock }) }),
+        }
+      }
       if (tabela === "inscricao_ofertas") return { insert: inscricaoOfertasInsertMock }
       throw new Error(`tabela inesperada: ${tabela}`)
     },
@@ -57,6 +63,7 @@ describe("confirmarInscricao", () => {
     obterConfiguracaoAcademicaMock.mockReset().mockResolvedValue({ mediaMinima: 7, janelaInscricaoDias: 20 })
     ofertasSelectMock.mockReset()
     progressoSelectMock.mockReset().mockResolvedValue({ data: null })
+    inscricaoMaybeSingleMock.mockReset().mockResolvedValue({ data: null })
     inscricaoInsertSingleMock.mockReset()
     inscricaoOfertasInsertMock.mockReset().mockResolvedValue({ error: null })
     progressoUpsertMock.mockReset().mockResolvedValue({ error: null })
@@ -123,5 +130,61 @@ describe("confirmarInscricao", () => {
       [{ aluno_id: "aluno-1", disciplina_id: "disc-1", status: "cursando" }],
       { onConflict: "aluno_id,disciplina_id", ignoreDuplicates: true }
     )
+  })
+
+  it("retorna erro quando a configuração acadêmica falha, sem consultar ofertas", async () => {
+    getCurrentUserMock.mockResolvedValueOnce({ usuarioId: "aluno-1", papel: "aluno", email: "a@a.com" })
+    avaliarGateInscricaoMock.mockResolvedValueOnce({ liberado: true })
+    obterConfiguracaoAcademicaMock.mockReset().mockRejectedValueOnce(new Error("falha no banco"))
+
+    const { confirmarInscricao } = await import("@/app/aluno/inscricao/actions")
+    const resultado = await confirmarInscricao(["oferta-1"])
+
+    expect(resultado).toEqual({ ok: false, erro: "Falha ao carregar configuração acadêmica: falha no banco" })
+    expect(ofertasSelectMock).not.toHaveBeenCalled()
+  })
+
+  it("confirma a inscrição mesmo quando o upsert de progresso falha", async () => {
+    getCurrentUserMock.mockResolvedValueOnce({ usuarioId: "aluno-1", papel: "aluno", email: "a@a.com" })
+    avaliarGateInscricaoMock.mockResolvedValueOnce({ liberado: true })
+    ofertasSelectMock.mockResolvedValueOnce({ data: [ofertaMatematica], error: null })
+    inscricaoInsertSingleMock.mockResolvedValueOnce({ data: { id: "inscricao-1" }, error: null })
+    progressoUpsertMock.mockReset().mockResolvedValueOnce({ error: { message: "falha no upsert" } })
+
+    const { confirmarInscricao } = await import("@/app/aluno/inscricao/actions")
+    const resultado = await confirmarInscricao(["oferta-1"])
+
+    expect(resultado).toEqual({ ok: true, valorMensalidade: 80 })
+  })
+
+  it("recusa quando as ofertas selecionadas não são do mesmo trimestre", async () => {
+    getCurrentUserMock.mockResolvedValueOnce({ usuarioId: "aluno-1", papel: "aluno", email: "a@a.com" })
+    avaliarGateInscricaoMock.mockResolvedValueOnce({ liberado: true })
+    ofertasSelectMock.mockResolvedValueOnce({
+      data: [ofertaMatematica, { ...ofertaMatematica, id: "oferta-2", trimestre: "2" }],
+      error: null,
+    })
+
+    const { confirmarInscricao } = await import("@/app/aluno/inscricao/actions")
+    const resultado = await confirmarInscricao(["oferta-1", "oferta-2"])
+
+    expect(resultado).toEqual({
+      ok: false,
+      erro: "Todas as disciplinas selecionadas devem ser do mesmo trimestre.",
+    })
+    expect(inscricaoInsertSingleMock).not.toHaveBeenCalled()
+  })
+
+  it("recusa quando já existe inscrição para o mesmo ano/trimestre", async () => {
+    getCurrentUserMock.mockResolvedValueOnce({ usuarioId: "aluno-1", papel: "aluno", email: "a@a.com" })
+    avaliarGateInscricaoMock.mockResolvedValueOnce({ liberado: true })
+    ofertasSelectMock.mockResolvedValueOnce({ data: [ofertaMatematica], error: null })
+    inscricaoMaybeSingleMock.mockReset().mockResolvedValueOnce({ data: { id: "inscricao-existente" } })
+
+    const { confirmarInscricao } = await import("@/app/aluno/inscricao/actions")
+    const resultado = await confirmarInscricao(["oferta-1"])
+
+    expect(resultado).toEqual({ ok: false, erro: "Inscrição de 2027/1 já confirmada." })
+    expect(inscricaoInsertSingleMock).not.toHaveBeenCalled()
   })
 })

@@ -30,7 +30,13 @@ export async function confirmarInscricao(ofertaIds: string[]): Promise<Confirmar
     return { ok: false, erro: gate.motivo ?? "Inscrição bloqueada." }
   }
 
-  const { janelaInscricaoDias } = await obterConfiguracaoAcademica()
+  let janelaInscricaoDias: number
+  try {
+    ;({ janelaInscricaoDias } = await obterConfiguracaoAcademica())
+  } catch (erro) {
+    const mensagem = erro instanceof Error ? erro.message : "erro desconhecido"
+    return { ok: false, erro: `Falha ao carregar configuração acadêmica: ${mensagem}` }
+  }
 
   const { data: ofertas, error: ofertasError } = await supabaseAdmin
     .from("ofertas")
@@ -39,6 +45,26 @@ export async function confirmarInscricao(ofertaIds: string[]): Promise<Confirmar
 
   if (ofertasError || !ofertas || ofertas.length !== ofertaIds.length) {
     return { ok: false, erro: "Uma ou mais disciplinas selecionadas não foram encontradas." }
+  }
+
+  const primeiraOferta = ofertas[0] as unknown as OfertaComDisciplina
+  const todasMesmoTrimestre = (ofertas as unknown as OfertaComDisciplina[]).every(
+    (oferta) => oferta.ano === primeiraOferta.ano && oferta.trimestre === primeiraOferta.trimestre
+  )
+  if (!todasMesmoTrimestre) {
+    return { ok: false, erro: "Todas as disciplinas selecionadas devem ser do mesmo trimestre." }
+  }
+
+  const { data: inscricaoExistente } = await supabaseAdmin
+    .from("inscricoes")
+    .select("id")
+    .eq("aluno_id", usuario.usuarioId)
+    .eq("ano", primeiraOferta.ano)
+    .eq("trimestre", primeiraOferta.trimestre)
+    .maybeSingle()
+
+  if (inscricaoExistente) {
+    return { ok: false, erro: `Inscrição de ${primeiraOferta.ano}/${primeiraOferta.trimestre} já confirmada.` }
   }
 
   const agora = new Date()
@@ -67,7 +93,6 @@ export async function confirmarInscricao(ofertaIds: string[]): Promise<Confirmar
     0
   )
 
-  const primeiraOferta = ofertas[0] as unknown as OfertaComDisciplina
   const { data: inscricao, error: inscricaoError } = await supabaseAdmin
     .from("inscricoes")
     .insert({
@@ -91,7 +116,7 @@ export async function confirmarInscricao(ofertaIds: string[]): Promise<Confirmar
     return { ok: false, erro: `Falha ao registrar disciplinas da inscrição: ${itensError.message}` }
   }
 
-  await supabaseAdmin
+  const { error: progressoError } = await supabaseAdmin
     .from("progresso_aluno")
     .upsert(
       (ofertas as unknown as OfertaComDisciplina[]).map((oferta) => ({
@@ -101,6 +126,10 @@ export async function confirmarInscricao(ofertaIds: string[]): Promise<Confirmar
       })),
       { onConflict: "aluno_id,disciplina_id", ignoreDuplicates: true }
     )
+
+  if (progressoError) {
+    console.error("confirmarInscricao: falha ao atualizar progresso do aluno", progressoError)
+  }
 
   return { ok: true, valorMensalidade }
 }
