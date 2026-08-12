@@ -39,13 +39,32 @@ export async function gerarRA(alunoId: string, nomeAluno: string): Promise<Gerar
   const ra = formatarRA(ano, sequencia)
   const driveFolderId = await criarPastaNoDrive(nomeAluno, ra)
 
-  const { error: updateError } = await supabaseAdmin
+  const { data: updated, error: updateError } = await supabaseAdmin
     .from("alunos")
     .update({ ra, drive_folder_id: driveFolderId })
     .eq("usuario_id", alunoId)
+    .is("ra", null)
+    .select("ra")
+    .maybeSingle()
 
   if (updateError) {
     throw new Error(`Falha ao salvar RA gerado: ${updateError.message}`)
+  }
+
+  if (!updated) {
+    // Outra chamada concorrente já gerou e salvou o RA primeiro.
+    // Buscamos o RA que de fato venceu, para que ambas as chamadas convirjam no mesmo valor.
+    const { data: aluno, error: fetchError } = await supabaseAdmin
+      .from("alunos")
+      .select("ra")
+      .eq("usuario_id", alunoId)
+      .single()
+
+    if (fetchError || !aluno?.ra) {
+      throw new Error("Falha ao gerar RA: condição de corrida detectada, mas não foi possível recuperar o RA já salvo.")
+    }
+
+    return { ra: aluno.ra, driveFolderId }
   }
 
   return { ra, driveFolderId }
