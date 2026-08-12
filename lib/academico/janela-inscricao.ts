@@ -4,10 +4,8 @@ export type OfertaParaJanela = {
 }
 
 function dataHoraInicio(oferta: OfertaParaJanela): Date {
-  const [hora, minuto] = oferta.horarioAula.split(":").map(Number)
-  const data = new Date(`${oferta.dataInicioAulas}T00:00:00`)
-  data.setHours(hora, minuto, 0, 0)
-  return data
+  const horarioHHMM = oferta.horarioAula.slice(0, 5) // tolerate "HH:MM:SS" (e.g. from Postgres time columns) by taking just "HH:MM"
+  return new Date(`${oferta.dataInicioAulas}T${horarioHHMM}:00-03:00`)
 }
 
 export function calcularJanela(oferta: OfertaParaJanela, janelaInscricaoDias: number): { abreEm: Date; fechaEm: Date } {
