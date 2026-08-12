@@ -79,11 +79,15 @@ describe("gerarRA", () => {
     rpcMock.mockResolvedValueOnce({ data: 9, error: null })
     filesCreateMock.mockResolvedValueOnce({ data: { id: "drive-folder-id-perdedor" } })
     updateMaybeSingleMock.mockResolvedValueOnce({ data: null, error: null })
-    alunoSingleMock.mockResolvedValueOnce({ data: { ra: "RA-2026-0005" }, error: null })
+    alunoSingleMock.mockResolvedValueOnce({
+      data: { ra: "RA-2026-0005", drive_folder_id: "drive-folder-id-vencedor" },
+      error: null,
+    })
 
     const { gerarRA } = await import("@/lib/ra/generate")
     const resultado = await gerarRA("aluno-id-1", "Fulano de Tal")
 
-    expect(resultado).toEqual({ ra: "RA-2026-0005", driveFolderId: "drive-folder-id-perdedor" })
+    expect(resultado).toEqual({ ra: "RA-2026-0005", driveFolderId: "drive-folder-id-vencedor" })
+    expect(resultado.driveFolderId).not.toBe("drive-folder-id-perdedor")
   })
 })

@@ -26,11 +26,13 @@ export async function confirmarMatricula(): Promise<ConfirmarMatriculaResult> {
     return { ok: false, erro: `Matrícula de ${ano} já confirmada.` }
   }
 
-  const { data: aluno } = await supabaseAdmin
+  const { data: aluno, error: alunoError } = await supabaseAdmin
     .from("alunos")
     .select("ra, nome")
     .eq("usuario_id", usuario.usuarioId)
     .single()
+
+  if (alunoError) console.error("confirmarMatricula: falha ao consultar alunos", alunoError)
 
   if (!aluno) {
     return { ok: false, erro: "Cadastro de aluno não encontrado." }

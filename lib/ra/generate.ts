@@ -1,3 +1,5 @@
+import "server-only"
+
 import { google } from "googleapis"
 import { supabaseAdmin } from "@/lib/supabase/admin"
 
@@ -56,15 +58,15 @@ export async function gerarRA(alunoId: string, nomeAluno: string): Promise<Gerar
     // Buscamos o RA que de fato venceu, para que ambas as chamadas convirjam no mesmo valor.
     const { data: aluno, error: fetchError } = await supabaseAdmin
       .from("alunos")
-      .select("ra")
+      .select("ra, drive_folder_id")
       .eq("usuario_id", alunoId)
       .single()
 
-    if (fetchError || !aluno?.ra) {
+    if (fetchError || !aluno?.ra || !aluno?.drive_folder_id) {
       throw new Error("Falha ao gerar RA: condição de corrida detectada, mas não foi possível recuperar o RA já salvo.")
     }
 
-    return { ra: aluno.ra, driveFolderId }
+    return { ra: aluno.ra, driveFolderId: aluno.drive_folder_id }
   }
 
   return { ra, driveFolderId }
