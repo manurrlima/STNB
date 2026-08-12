@@ -83,6 +83,17 @@ describe("editarOferta", () => {
     editarEqChainMock.mockReset().mockReturnValue({ error: null })
   })
 
+  it("recusa quando o papel é aluno", async () => {
+    const { editarOferta } = await import("@/lib/academico/ofertas")
+    const resultado = await editarOferta("aluno", "oferta-1", { dataInicioAulas: "2027-02-05" })
+    expect(resultado).toEqual({
+      ok: false,
+      erro: "Apenas pedagógico ou financeiro podem editar ofertas.",
+    })
+    expect(ofertaSingleMock).not.toHaveBeenCalled()
+    expect(editarEqChainMock).not.toHaveBeenCalled()
+  })
+
   it("permite pedagogico editar oferta não fechada", async () => {
     ofertaSingleMock.mockResolvedValueOnce({ data: { fechado: false }, error: null })
     const { editarOferta } = await import("@/lib/academico/ofertas")

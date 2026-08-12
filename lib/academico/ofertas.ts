@@ -82,6 +82,10 @@ export async function editarOferta(
   ofertaId: string,
   dados: Partial<{ dataInicioAulas: string; horarioAula: string }>
 ): Promise<OfertaAcaoResult> {
+  if (!ehPedagogicoOuFinanceiro(papel)) {
+    return { ok: false, erro: "Apenas pedagógico ou financeiro podem editar ofertas." }
+  }
+
   const { data: ofertaAtual, error: buscaError } = await supabaseAdmin
     .from("ofertas")
     .select("fechado")
