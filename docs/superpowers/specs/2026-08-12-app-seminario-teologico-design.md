@@ -9,7 +9,7 @@ Construir um app web para um seminário teológico (~200 alunos) com três perfi
 - Instituição já usa Google Workspace (será usado para SSO do financeiro/pedagógico, não como banco de dados).
 - Primeira vez configurando cobrança automática — nenhum provedor de pagamento pré-existente.
 - Time de desenvolvimento: o usuário + Claude Code. Sem orçamento para ferramentas no-code pagas ou serviços com mensalidade alta.
-- Seminário tem ao menos um polo mencionado (Polo Recife) — o modelo de dados já reserva campo de polo no Aluno, mas suporte multi-polo completo não foi detalhado (ver "Itens em aberto").
+- Seminário Teológico Nazareno do Brasil | Polo Recife — Os polos sao independentes. O sistema atende apenas 1 polo do STNB que é o STNB polo recife.
 
 ## Arquitetura
 
@@ -57,11 +57,13 @@ Aplicação em duas camadas: toda rota de API valida o papel do usuário autenti
 
 **Inscrição (trimestral)** → só disponível quando Pedagógico/Financeiro abre o período. Requisitos para o aluno se inscrever: (1) matrícula do ano em dia, (2) os 2 documentos anuais aprovados, (3) nenhuma pendência financeira do trimestre anterior. Ao confirmar, o sistema calcula a mensalidade (soma das disciplinas escolhidas).
 
-**Cobrança automática (Pix)** → mensalmente (ex: todo dia 5), o sistema gera uma cobrança Pix via Asaas no valor da mensalidade vigente, para todo aluno com Inscrição ativa. Pagamento em atraso bloqueia a próxima Inscrição — não bloqueia a disciplina em andamento.
+**Cobrança automática (Pix)** → mensalmente (todo dia 10), o sistema gera uma cobrança Pix via Asaas no valor da mensalidade vigente, para todo aluno com Inscrição ativa. Pagamento em atraso bloqueia a próxima Inscrição — não bloqueia a disciplina em andamento.
+
+**Confirmação de dados antes de gerar PDF** → regra vale para todo documento gerado pelo sistema (Declaração de Vínculo, Matriz Curricular Atualizada, Trancamento/Cancelamento, documentos anuais): antes de gerar o PDF, o sistema mostra ao aluno os dados que serão usados e pergunta se estão corretos. Se o aluno editar algum dado nessa etapa, o sistema pergunta se a alteração deve **também** ser salva no perfil dele (ou seja, se é uma correção permanente do cadastro, ou só vale para aquele documento específico).
 
 **Solicitações Acadêmicas**:
-- Declaração de Vínculo e Matriz Curricular Atualizada: PDF gerado automaticamente pelo sistema.
-- Trancamento / Cancelamento: aluno preenche dados → sistema gera termo de ciência → e-mail para aluno, pastor (mentor), financeiro e pedagógico, solicitando assinatura do pastor titular → upload do documento assinado no sistema.
+- Declaração de Vínculo e Matriz Curricular Atualizada: PDF gerado automaticamente pelo sistema, após a confirmação de dados descrita acima.
+- Trancamento / Cancelamento: o sistema preenche os dados e o aluno verifica e autoriza ou edita caso esteja errado (mesma confirmação de dados) → sistema gera termo de ciência → e-mail para aluno, pastor titular, financeiro e pedagógico, solicitando assinatura do pastor titular → upload do documento assinado no sistema.
 - Certificado de Conclusão e Transferência de Polo: pedido com prazo e acompanhamento via notificação — detalhes finos do fluxo a definir (ver Itens em aberto).
 - Outros: campo livre, tratado caso a caso pelo Pedagógico.
 
@@ -80,5 +82,5 @@ Testes automatizados concentrados no que envolve dinheiro e regras de bloqueio: 
 ## Itens em aberto
 
 - **Certificado de Conclusão** e **Transferência de Polo** (entrada/saída do Polo Recife): fluxo exato ainda não definido pelo usuário. Modelado por ora como solicitação com prazo e notificação de tarefa pendente; refinar antes da Fase 4.
-- **Suporte multi-polo**: o modelo reserva campo de Polo no Aluno, mas regras específicas de múltiplos polos (além da transferência) não foram detalhadas.
+- **Sem suporte multi-polo**: o sistema atende exclusivamente o STNB Polo Recife. Os polos são independentes entre si — não há gestão de outros polos dentro deste sistema. "Transferência de Polo" é apenas o registro de entrada/saída de um aluno em relação a este polo específico.
 - **Permissões configuráveis** por função (Financeiro ligando/desligando o que o Pedagógico pode fazer): adiado para V2, fora do escopo desta primeira construção.
