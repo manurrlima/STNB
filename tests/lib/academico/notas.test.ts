@@ -52,4 +52,12 @@ describe("lancarNotas", () => {
       { onConflict: "aluno_id,disciplina_id" }
     )
   })
+
+  it("retorna erro quando a configuração acadêmica falha", async () => {
+    obterConfiguracaoAcademicaMock.mockRejectedValueOnce(new Error("falha no banco"))
+    const { lancarNotas } = await import("@/lib/academico/notas")
+    const resultado = await lancarNotas("pedagogico", "aluno-1", "disc-1", 8, 9)
+    expect(resultado).toEqual({ ok: false, erro: "Falha ao carregar configuração acadêmica: falha no banco" })
+    expect(upsertMock).not.toHaveBeenCalled()
+  })
 })

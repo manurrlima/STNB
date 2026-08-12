@@ -22,7 +22,14 @@ export async function lancarNotas(
     return { ok: false, erro: "Apenas pedagógico ou financeiro podem lançar notas." }
   }
 
-  const { mediaMinima } = await obterConfiguracaoAcademica()
+  let mediaMinima: number
+  try {
+    ;({ mediaMinima } = await obterConfiguracaoAcademica())
+  } catch (erro) {
+    const mensagem = erro instanceof Error ? erro.message : "erro desconhecido"
+    return { ok: false, erro: `Falha ao carregar configuração acadêmica: ${mensagem}` }
+  }
+
   const resultado = calcularAprovacao(n1, n2, mediaMinima)
 
   const { error } = await supabaseAdmin
