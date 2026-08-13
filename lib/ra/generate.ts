@@ -25,6 +25,7 @@ async function criarPastaNoDrive(nomeAluno: string, ra: string): Promise<string>
       parents: [process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID as string],
     },
     fields: "id",
+    supportsAllDrives: true,
   })
 
   if (!response.data.id) throw new Error("Google Drive não retornou o id da pasta criada")
